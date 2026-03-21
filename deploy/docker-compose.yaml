@@ -1,0 +1,108 @@
+# 网络配置
+networks:
+  echo:
+    driver: bridge # 设置网络模式
+
+# 服务容器配置
+# 在配置文件中，所有的容器通过services来定义
+services:
+  #  配置 etcd
+  etcd:
+    image: bitnami/etcd:latest # 不指定 tag 默认使用 latest
+    container_name: echo_etcd
+    ports:
+      - "12379:2379"
+    volumes:
+      - ${DATA_HOST}/etcd/data:/bitnami/etcd/data
+      - ${DATA_HOST}/etcd/logs:/bitnami/etcd/logs
+    networks:
+      echo:
+    restart: ${RUN_MODE}
+    environment:
+      - TZ=${TZ} # 设置时区
+      - ALLOW_NONE_AUTHENTICATION=yes # 允许没有密码的访问
+      - ETCD_ADVERTISE_CLIENT_URLS=http://etcd:2379,http://127.0.0.1:12379 # 配置 etcd 的监听地址，支持容器内和宿主机
+      - ETCD_LISTEN_CLIENT_URLS=http://0.0.0.0:2379 # 配置 etcd 的广播地址
+      - ETCD_NAME=etcd # 配置 etcd 节点的名称 (用于集群)
+
+  # mongodb:
+  #   image: mongodb/mongodb-community-server:latest
+  #   container_name: echo_mongodb
+  #   environment:
+  #     MONGO_INITDB_ROOT_USERNAME: root
+  #     MONGO_INITDB_ROOT_PASSWORD: echo
+  #   ports:
+  #     - "7017:7017"
+  #   volumes:
+  #     - ${DATA_HOST}/mongo/data:/data/db
+  #     - /etc/localtime:/etc/localtime
+  #   restart: ${RUN_MODE}
+  #   networks:
+  #     echo:
+
+  # ===== MinIO (对象存储) =====
+  minio:
+    container_name: echo_minio
+    image: minio/minio:RELEASE.2023-03-20T20-16-18Z
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - ${DATA_HOST}/minio:/minio_data
+    command: minio server /minio_data --console-address ":9001"
+    environment:
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+      - TZ=${TZ}
+    networks:
+      - echo
+    restart: ${RUN_MODE}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  # ===== Milvus Standalone (向量数据库) =====
+  milvus:
+    container_name: echo_milvus
+    image: milvusdb/milvus:v2.5.10
+    command: ["milvus", "run", "standalone"]
+    ports:
+      - "19530:19530"
+      - "9091:9091"
+    volumes:
+      - ${DATA_HOST}/milvus:/var/lib/milvus
+    environment:
+      - TZ=${TZ}
+      - ETCD_ENDPOINTS=etcd:2379
+      - MINIO_ADDRESS=minio:9000
+    security_opt:
+      - seccomp:unconfined
+    networks:
+      - echo
+    restart: ${RUN_MODE}
+    depends_on:
+      - etcd
+      - minio
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9091/healthz"]
+      interval: 30s
+      start_period: 90s
+      timeout: 20s
+      retries: 3
+
+  # ===== Attu (可视化管理界面) =====
+  attu:
+    container_name: echo_attu
+    image: zilliz/attu:v2.6
+    ports:
+      - "8000:3000"
+    environment:
+      - MILVUS_URL=milvus:19530
+      - TZ=${TZ}
+    networks:
+      - echo
+    restart: ${RUN_MODE}
+    depends_on:
+      - milvus
