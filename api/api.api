@@ -1,0 +1,25 @@
+syntax = "v1"
+
+type (
+	ChatReq {
+		ChatId  string `json:"chatId"`
+		Message string `json:"message"`
+	}
+	ChatResp {
+		ChatId string      `json:"chatId"`
+		Event  string      `json:"event"`
+		Data   interface{} `json:"data"`
+	}
+)
+
+//路由组
+@server (
+	prefix: /agent
+	group:  chat
+	sse:    true
+)
+service agent {
+	@handler chat
+	get /chat (ChatReq) returns (ChatResp)
+}
+

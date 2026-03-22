@@ -16,7 +16,7 @@ func NewRetriever(ctx context.Context, config config.Config, embedder *ark.Embed
 			DBName:  config.MilvusDBName,
 		},
 		Collection: config.MilvusCollectionName,
-		TopK:       10,
+		TopK:       2,
 		SearchMode: search_mode.NewApproximate(milvus2.COSINE),
 		Embedding:  embedder,
 	})
