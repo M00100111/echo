@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	chat "Echo/api/internal/handler/chat"
+	file "Echo/api/internal/handler/file"
 	"Echo/api/internal/svc"
 
 	"github.com/zeromicro/go-zero/rest"
@@ -23,5 +24,16 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 		},
 		rest.WithPrefix("/agent"),
 		rest.WithSSE(),
+	)
+
+	server.AddRoutes(
+		[]rest.Route{
+			{
+				Method:  http.MethodPost,
+				Path:    "/upload/file",
+				Handler: file.UploadFileHandler(serverCtx),
+			},
+		},
+		rest.WithPrefix("/agent"),
 	)
 }

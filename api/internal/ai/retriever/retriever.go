@@ -1,7 +1,7 @@
 package retriever
 
 import (
-	"Echo/ai/config"
+	"Echo/api/internal/config"
 	"context"
 	"github.com/cloudwego/eino-ext/components/embedding/ark"
 	"github.com/cloudwego/eino-ext/components/retriever/milvus2"

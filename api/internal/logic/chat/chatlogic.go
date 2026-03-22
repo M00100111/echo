@@ -57,6 +57,35 @@ func (l *ChatLogic) Chat(req *types.ChatReq, client chan<- *types.ChatResp) erro
 		}
 	}
 
+	//	serverTools := []*agenticark.ServerToolConfig{
+	//		{
+	//			WebSearch: &responses.ToolWebSearch{
+	//				Type: responses.ToolType_web_search,
+	//			},
+	//		},
+	//	}
+	//
+	//	allowedTools := []*schema.AllowedTool{
+	//		{
+	//			ServerTool: &schema.AllowedServerTool{
+	//				Name: string(agenticark.ServerToolNameWebSearch),
+	//			},
+	//		},
+	//	}
+	//
+	//	opts := []model.Option{
+	//		agenticark.WithServerTools(serverTools),
+	//		model.WithAgenticToolChoice(&schema.AgenticToolChoice{
+	//			Type: schema.ToolChoiceForced,
+	//			Forced: &schema.AgenticForcedToolChoice{
+	//				Tools: allowedTools,
+	//			},
+	//		}),
+	//		agenticark.WithThinking(&responses.ResponsesThinking{
+	//			Type: responses.ThinkingType_enabled.Enum(),
+	//		}),
+	//	}
+
 	chatModel := models.NewChatModel(l.ctx, l.svcCtx.Config)
 
 	input := []*schema.AgenticMessage{}

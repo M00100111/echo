@@ -1,7 +1,7 @@
 package models
 
 import (
-	"Echo/ai/config"
+	"Echo/api/internal/config"
 	"context"
 	"github.com/cloudwego/eino-ext/components/embedding/ark"
 )

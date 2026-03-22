@@ -4,12 +4,12 @@
 package main
 
 import (
-	"flag"
-	"fmt"
-
 	"Echo/api/internal/config"
 	"Echo/api/internal/handler"
 	"Echo/api/internal/svc"
+	"flag"
+	"fmt"
+	"github.com/joho/godotenv"
 
 	"github.com/zeromicro/go-zero/core/conf"
 	"github.com/zeromicro/go-zero/rest"
@@ -22,6 +22,12 @@ func main() {
 
 	var c config.Config
 	conf.MustLoad(*configFile, &c)
+	err := godotenv.Load("./etc/.env")
+	if err != nil {
+		panic(err)
+	}
+	c.InitConfig()
+	fmt.Printf("config: %+v", c)
 
 	server := rest.MustNewServer(c.RestConf)
 	defer server.Stop()

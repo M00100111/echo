@@ -23,3 +23,18 @@ service agent {
 	get /chat (ChatReq) returns (ChatResp)
 }
 
+type UploadResp {
+	Filename string `json:"filename"`
+	Size     int64  `json:"size"`
+}
+
+//路由组
+@server (
+	prefix: /agent
+	group:  file
+)
+service agent {
+	@handler UploadFile
+	post /upload/file returns (UploadResp)
+}
+
