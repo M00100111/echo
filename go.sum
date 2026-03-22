@@ -55,6 +55,8 @@ github.com/cloudwego/eino-ext/components/indexer/milvus2 v0.0.0-20260316121515-0
 github.com/cloudwego/eino-ext/components/indexer/milvus2 v0.0.0-20260316121515-014a29323bbe/go.mod h1:6+N5OCZrRkr8cUvTtbsEAhVAQvcVebzkh1LYRR76Lgo=
 github.com/cloudwego/eino-ext/components/model/agenticark v0.1.0-alpha.2 h1:Az6evzENGjJcGJRnmlG+f6nGwse8nTFa9QAhfz4rXjU=
 github.com/cloudwego/eino-ext/components/model/agenticark v0.1.0-alpha.2/go.mod h1:EwJHyMPZZ/bdThUQf/VloM2oP3t/VAMtBzoHG/Lj3VY=
+github.com/cloudwego/eino-ext/components/model/ark v0.1.65 h1:52ukXVU9ntToTa36SwI8be81qskGkpUEZraIFOf0wqk=
+github.com/cloudwego/eino-ext/components/model/ark v0.1.65/go.mod h1:aabMR15RTXBSi9Eu13CWavzE+no5BQO4FJUEEdqImbg=
 github.com/cloudwego/eino-ext/components/retriever/milvus2 v0.1.0 h1:1Cu+kqGszQn8s3S0YsrtfPtkWVsIMljNfHN6MXXe77g=
 github.com/cloudwego/eino-ext/components/retriever/milvus2 v0.1.0/go.mod h1:je6JMN7aqt+/MVzpZ+C5Y8Egl72FvA5M9SL9FqUXspM=
 github.com/cncf/udpa/go v0.0.0-20191209042840-269d4d468f6f/go.mod h1:M8M6+tZqaGXZJjfX53e64911xZQV5JYwmTeXPW+k8Sc=

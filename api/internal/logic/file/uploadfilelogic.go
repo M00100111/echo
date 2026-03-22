@@ -4,12 +4,18 @@
 package file
 
 import (
+	"Echo/api/internal/ai/indexer"
+	models "Echo/api/internal/ai/models/embeddingModel"
+	"Echo/api/internal/ai/transformer"
+	"Echo/api/internal/config"
 	"context"
 	"fmt"
+	"github.com/cloudwego/eino/schema"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 
 	"Echo/api/internal/svc"
 	"Echo/api/internal/types"
@@ -70,9 +76,36 @@ func (l *UploadFileLogic) UploadFile() (resp *types.UploadResp, err error) {
 		return nil, fmt.Errorf("failed to copy file content: %w", err)
 	}
 
+	// 异步分析文件内容
+	go Analyze(l.ctx, l.svcCtx.Config, header.Filename)
+
 	// Return the response
 	return &types.UploadResp{
 		Filename: header.Filename,
 		Size:     size,
 	}, nil
+}
+
+func Analyze(ctx context.Context, config config.Config, fileName string) {
+	trans := transformer.NewTransformer(ctx)
+	bs, err := os.ReadFile("../docs/" + fileName)
+	if err != nil {
+		panic(err)
+	}
+	docs := []*schema.Document{{
+		ID:      "fileName",
+		Content: string(bs),
+	},
+	}
+	embedder := models.NewEmbeddingModel(ctx)
+	ind := indexer.NewIndexer(ctx, config, embedder)
+	results, err := trans.Transform(ctx, docs)
+	for index, doc := range results {
+		doc.ID += strconv.Itoa(index)
+	}
+	ids, err := ind.Store(ctx, results)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("分析完毕：", ids)
 }

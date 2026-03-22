@@ -8,6 +8,7 @@ require (
 	github.com/cloudwego/eino-ext/components/embedding/ark v0.1.1
 	github.com/cloudwego/eino-ext/components/indexer/milvus2 v0.0.0-20260316121515-014a29323bbe
 	github.com/cloudwego/eino-ext/components/model/agenticark v0.1.0-alpha.2
+	github.com/cloudwego/eino-ext/components/model/ark v0.1.65
 	github.com/cloudwego/eino-ext/components/retriever/milvus2 v0.1.0
 	github.com/google/uuid v1.6.0
 	github.com/joho/godotenv v1.5.1

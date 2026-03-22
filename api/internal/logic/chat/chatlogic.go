@@ -4,13 +4,17 @@
 package chat
 
 import (
-	models "Echo/api/internal/ai/models/chatModel"
+	react "Echo/api/internal/ai/agent"
+	"Echo/api/internal/ai/callback"
 	models2 "Echo/api/internal/ai/models/embeddingModel"
 	"Echo/api/internal/ai/retriever"
 	"Echo/api/internal/config"
 	"Echo/pkg/mem"
 	"context"
 	"errors"
+	"fmt"
+	"github.com/cloudwego/eino/compose"
+	"github.com/cloudwego/eino/flow/agent"
 	"io"
 	"log"
 
@@ -44,18 +48,14 @@ func (l *ChatLogic) Chat(req *types.ChatReq, client chan<- *types.ChatResp) erro
 		chatId = id.String()
 	}
 
-	// 获取历史对话
-	memory := mem.GetSimpleMemory(chatId)
-	historyMessages := memory.GetMessages()
-
-	var documents []*schema.Document
-	if req.Message != "" {
-		var err error
-		documents, err = l.queryInternalDocsTool(l.ctx, l.svcCtx.Config, req.Message)
-		if err != nil {
-			return err
-		}
-	}
+	//var documents []*schema.Document
+	//if req.Message != "" {
+	//	var err error
+	//	documents, err = l.queryInternalDocsTool(l.ctx, l.svcCtx.Config, req.Message)
+	//	if err != nil {
+	//		return err
+	//	}
+	//}
 
 	//	serverTools := []*agenticark.ServerToolConfig{
 	//		{
@@ -86,80 +86,81 @@ func (l *ChatLogic) Chat(req *types.ChatReq, client chan<- *types.ChatResp) erro
 	//		}),
 	//	}
 
-	chatModel := models.NewChatModel(l.ctx, l.svcCtx.Config)
-
-	input := []*schema.AgenticMessage{}
-
 	// 添加检索到的文档作为系统消息
-	if len(documents) > 0 {
-		docContent := "相关文档信息：\n"
-		for _, doc := range documents {
-			docContent += "- " + doc.Content + "\n"
-		}
-		input = append(input, schema.SystemAgenticMessage(docContent))
-	}
+	//if len(documents) > 0 {
+	//	docContent := "相关文档信息：\n"
+	//	for _, doc := range documents {
+	//		docContent += "- " + doc.Content + "\n"
+	//	}
+	//	input = append(input, schema.SystemAgenticMessage(docContent))
+	//}
+	//input := []*schema.AgenticMessage{}
+	// 获取历史对话
+	memory := mem.GetSimpleMemory(chatId)
+	historyMessages := memory.GetMessages()
+	//// 添加历史对话
+	//for _, msg := range historyMessages {
+	//	// 根据消息类型转换为AgenticMessage
+	//	switch msg.Role {
+	//	case schema.User:
+	//		input = append(input, schema.UserAgenticMessage(msg.Content))
+	//	case schema.Assistant:
+	//		temp := schema.UserAgenticMessage(msg.Content)
+	//		temp.Role = schema.AgenticRoleTypeAssistant
+	//		input = append(input, temp)
+	//	}
+	//}
 
-	// 添加历史对话
-	for _, msg := range historyMessages {
-		// 根据消息类型转换为AgenticMessage
-		switch msg.Role {
-		case schema.User:
-			input = append(input, schema.UserAgenticMessage(msg.Content))
-		case schema.Assistant:
-			temp := schema.UserAgenticMessage(msg.Content)
-			temp.Role = schema.AgenticRoleTypeAssistant
-			input = append(input, temp)
-		}
-	}
+	userMessage := req.Message
+	//input = append(input, schema.UserAgenticMessage(userMessage))
 
 	// 添加用户消息
-	userMessage := req.Message
-	input = append(input, schema.UserAgenticMessage(userMessage))
-
-	// 保存用户消息到历史记录
-	memory.SetMessages(&schema.Message{
+	historyMessages = append(historyMessages, &schema.Message{
 		Role:    schema.User,
 		Content: userMessage,
 	})
 
-	resp, err := chatModel.Stream(l.ctx, input)
+	reactAgent := react.NewAgent(l.ctx, l.svcCtx.Config)
+	resp, err := reactAgent.Stream(l.ctx, historyMessages,
+		agent.WithComposeOptions(compose.WithCallbacks(&callback.LoggerCallback{})))
 	if err != nil {
-		log.Fatalf("failed to stream, err: %v", err)
+		fmt.Printf("failed to stream: %v", err)
+		return err
 	}
-
-	var msgs []*schema.AgenticMessage
-	var assistantResponse string
+	reasonContent := ""
+	finalContent := ""
 	for {
 		msg, err := resp.Recv()
 		if err != nil {
 			if errors.Is(err, io.EOF) {
+				// finish
+				// 保存用户消息到历史记录
+				memory.SetMessages(&schema.Message{
+					Role:    schema.User,
+					Content: userMessage,
+				})
 				// 保存助手回复到历史记录
 				memory.SetMessages(&schema.Message{
 					Role:    schema.Assistant,
-					Content: assistantResponse,
+					Content: finalContent,
 				})
-
-				// 发送结束事件
+				// 发送完整消息
 				client <- &types.ChatResp{
 					ChatId: chatId,
 					Event:  "end",
-					Data:   msgs,
+					Data: &schema.Message{
+						Role:             schema.Assistant,
+						ReasoningContent: reasonContent,
+						Content:          finalContent,
+					},
 				}
 				break
 			}
-			log.Fatalf("failed to receive stream response, err: %v", err)
+			fmt.Printf("failed to recv: %v", err)
+			return err
 		}
-		msgs = append(msgs, msg)
-
-		// 累加助手回复内容
-		if msg.ContentBlocks != nil {
-			for _, content := range msg.ContentBlocks {
-				if content.AssistantGenText != nil && content.AssistantGenText.Text != "" {
-					assistantResponse += content.AssistantGenText.Text
-				}
-			}
-		}
-
+		reasonContent += msg.ReasoningContent
+		finalContent += msg.Content
 		// 发送流式消息
 		client <- &types.ChatResp{
 			ChatId: chatId,
@@ -167,14 +168,13 @@ func (l *ChatLogic) Chat(req *types.ChatReq, client chan<- *types.ChatResp) erro
 			Data:   msg,
 		}
 	}
-
 	return nil
 }
 
 func (l *ChatLogic) queryInternalDocsTool(ctx context.Context, config config.Config, query string) ([]*schema.Document, error) {
 	// 检索文档
-	embedder := models2.NewEmbeddingModel(ctx, config)
-	retriever := retriever.NewRetriever(ctx, config, embedder)
+	embedder := models2.NewEmbeddingModel(ctx)
+	retriever := retriever.NewRetriever(ctx, embedder)
 	documents, err := retriever.Retrieve(ctx, query)
 	if err != nil {
 		log.Fatalf("Failed to retrieve: %v", err)
